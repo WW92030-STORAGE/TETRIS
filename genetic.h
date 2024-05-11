@@ -11,25 +11,28 @@
 class TetrisAI {
     public:
     
-    // Weights for the AI https://luckytoilet.wordpress.com/2011/05/27/coding-a-tetris-ai-using-a-genetic-algorithm/
+    // Weights for the AI based on https://luckytoilet.wordpress.com/2011/05/27/coding-a-tetris-ai-using-a-genetic-algorithm/
     
     double clear = 8;
     double height = -0.03;
     double hole = -7.5;
     double blockade = -3.5;
+	double hstd = -1;
     
     TetrisAI() {
         clear = 8;
         height = -0.03;
         hole = -7.5;
         blockade = -3.5;
+		hstd = -1;
     }
 
-	TetrisAI(double cl, double he, double ho, double bl) {
+	TetrisAI(double cl, double he, double ho, double bl, double hs) {
 		clear = cl;
 		height = he;
 		hole = ho;
 		blockade = bl;
+		hstd = hs;
 	}
     
     TetrisAI(const TetrisAI& ai) {
@@ -37,6 +40,7 @@ class TetrisAI {
         height = ai.height;
         hole = ai.hole;
         blockade = ai.blockade;
+		hstd = ai.hstd;
     }
     
     TetrisAI clone() {
@@ -45,6 +49,7 @@ class TetrisAI {
         res.height = height;
         res.hole = hole;
         res.blockade = blockade;
+		res.hstd = hstd;
         return res;
     }
     
@@ -52,7 +57,8 @@ class TetrisAI {
         if (clear != other.clear) return clear < other.clear;
         if (height != other.height) return height < other.height;
         if (hole != other.hole) return hole < other.hole;
-        return blockade < other.blockade;
+		if (blockade != other.blockade) return blockade < other.blockade;
+        return hstd < other.hstd;
     }
     
     
@@ -61,6 +67,9 @@ class TetrisAI {
         double holes = 0;
         double clears = 0;
         double blocks = 0;
+		double stdev = 0;
+
+		std::vector<int> heights2(g.width, 0);
         
         for (int x = 0; x < g.width; x++) {
             bool containsholes = false;
@@ -71,6 +80,7 @@ class TetrisAI {
                     if (!heightcheck) {
                         if (verbose) std::cout << "(" << x << " " << y << ")";
                         heights += (y + 1);
+						heights2[x] = y + 1;
                         heightcheck = true;
                     }
                 }
@@ -98,7 +108,11 @@ class TetrisAI {
         
         if (verbose) std::cout << "\n" << clears << " " << heights << " " << holes << " " << blocks << "<\n";
         
-        double res = clear * clears + height * heights + hole * holes + blockade * blocks;
+		double mu = heights / g.width;
+		for (auto i : heights2) stdev += (i - mu) * (i - mu);
+		stdev /= g.width;
+
+        double res = clear * clears + height * heights + hole * holes + blockade * blocks + hstd * stdev;
         if (g.endgame) res = -1 * DBL_MAX; // Dont want to lose obvoiusly
         return res;
     }
@@ -237,7 +251,7 @@ class TetrisAI {
     
     std::string toString() {
         std::string res = "CLEAR " + std::to_string(clear) + " HEIGHT " + std::to_string(height);
-        res = res + " HOLE " + std::to_string(hole) + " BLOCKADE " + std::to_string(blockade);
+        res = res + " HOLE " + std::to_string(hole) + " BLOCKADE " + std::to_string(blockade) + " HSTD " + std::to_string(hstd);
         return res;
     }
 };
@@ -251,7 +265,7 @@ double test(TetrisAI ai, int trials = 16) {
     for (int i = 0; i < trials; i++) {
     
     while (true) {
-        Point chonk = ai.fuckaround2(game);
+        Point chonk = ai.fuckaround(game);
         // std::cout << fuckyou.x << " " << fuckyou.y << "\n";
         for (int i = 0; i < chonk.x; i++) game.rotatePieceClockwise();
         for (int i = 0; i < std::abs(chonk.y); i++) {
@@ -280,6 +294,7 @@ TetrisAI cross(TetrisAI& p1, TetrisAI& p2) {
     p3.height = (rand() % 2 == 0) ? p1.height : p2.height;
     p3.hole = (rand() % 2 == 0) ? p1.hole : p2.hole;
     p3.blockade = (rand() % 2 == 0) ? p1.blockade : p2.blockade;
+	p3.hstd = (rand() % 2 == 0) ? p1.hstd : p2.hstd;
     
     return p3;
 }
@@ -289,17 +304,14 @@ double rand01() {
 }
 
 TetrisAI mutate(TetrisAI ai2, int radius = 4) {
-    TetrisAI ai;
-    ai.clear = ai2.clear;
-    ai.height = ai2.height;
-    ai.hole = ai2.hole;
-    ai.blockade = ai2.blockade;
+    TetrisAI ai(ai2);
     
-    int x = rand() % 16;
+    int x = rand() % 64;
     if (x == 0) ai.clear = radius * (0.5 - 1 * rand01());
     if (x == 1) ai.height = radius * (0.5 - 1 * rand01());
     if (x == 2) ai.hole = radius * (0.5 - 1 * rand01());
     if (x == 3) ai.blockade = radius * (0.5 - 1 * rand01());
+	if (x == 4) ai.hstd = radius * (0.5 - 1 * rand01());
     return ai;
 }
 
@@ -308,10 +320,10 @@ std::vector<TetrisAI> generateMutations(TetrisAI ai, int num = 16) {
     for (int i = 0; i < num; i++) res.push_back(mutate(ai));
     return res;
 }
-std::vector<TetrisAI> top(std::vector<TetrisAI> ais, int k = 2, bool verbose = true) {
+std::vector<TetrisAI> top(std::vector<TetrisAI> ais, int k = 2, bool verbose = true, int trialspertest = 4) {
     std::vector<std::pair<double, int>> scores;
     for (int i = 0; i < ais.size(); i++) {
-		scores.push_back({-1 * Genetics::test(ais[i]), i});
+		scores.push_back({-1 * Genetics::test(ais[i], trialspertest), i});
 		if (verbose) std::cout << "X";
 	}
 	if (verbose) std::cout << "DONE\n";
