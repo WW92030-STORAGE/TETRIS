@@ -57,6 +57,8 @@ int main()
     
     // manual();
 
+	// Train the model!
+
 	TetrisAI ai;
 
 	vector<TetrisAI> res;
@@ -94,6 +96,7 @@ int main()
 	ai = Genetics::cross(res[0], res[1]);
 
 	cout << Genetics::test(ai, 16) << endl;
+	cout << ai.toString() << endl; // Model weights
 
     return 0;
 }
