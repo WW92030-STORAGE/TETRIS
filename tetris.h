@@ -1,8 +1,6 @@
 #ifndef TETRIS_H
 #define TETRIS_H
 
-#include <set>
-#include <map>
 #include <vector>
 #include <algorithm>
 #include <string>
@@ -34,55 +32,83 @@ class TetrisGame {
     int width, height;
     std::vector<std::vector<int>> grid;
     
-    TetrisPiece nextPiece;
     TetrisPiece activePiece;
     int activeRotation;
     int activePieceID;
     std::vector<TetrisPiece> bag;
     
-    bool endgame = false; // Have we ended?
+    // Scores and Flags
+    
+    bool endgame = false;
+    
+    int clears = 0;
     
     TetrisGame() {
+        clears = 0;
+        endgame = false;
+        activePieceID = -1;
+        activePiece = TetrisPiece();
         width = 10;
         height = 20;
         grid = std::vector<std::vector<int>>(width, std::vector<int>(height, -1));
         FillBag();
     }
     
-    void reset() { // Reset game
-        grid = std::vector<std::vector<int>>(width, std::vector<int>(height, -1));
-        FillBag();
+    TetrisGame(const TetrisGame& g) {
+        clears = 0;
         endgame = false;
+        activePieceID = -1;
+        width = g.width;
+        height = g.height;
+        grid = std::vector<std::vector<int>>(width, std::vector<int>(height, -1));
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) grid[i][j] = g.grid[i][j];
+        }
+        
+        bag = std::vector<TetrisPiece>();
+        for (auto p : g.bag) bag.push_back(TetrisPiece(p));
+        
+        activePiece = TetrisPiece(g.activePiece);
+        
+        activeRotation = g.activeRotation;
+        activePieceID = g.activePieceID;
     }
     
-    void FillBag() { // Fill the bag of pieces so we know what pieces are going to be used.
+    void FillBag() {
         bag.clear();
         for (int i = 0; i < 7; i++) bag.push_back(TetrisPiece(PIECES[i]));
         std::random_shuffle(bag.begin(), bag.end());
     }
     
-    void spawnPiece() { // Spawn in a piece. The next piece is always available as bag[bag.size() - 1].
+    void reset() {
+        grid = std::vector<std::vector<int>>(width, std::vector<int>(height, -1));
+        FillBag();
+        endgame = false;
+        clears = 0;
+    }
+    
+    void spawnPiece() {
         activePiece = bag[bag.size() - 1];
         bag.pop_back();
-        if (bag.size() <= 0) FillBag(); // Refills the bag so there is a preview for the next piece (be aware the bag is temporarily at size 0 during this process).
+        if (bag.size() <= 0) FillBag();
         
         activePieceID = -1;
         activeRotation = 0;
         
-        for (int i = 0; i < 7; i++) { // get the id
+        for (int i = 0; i < 7; i++) {
             if (activePiece == PIECES[i]) activePieceID = i;
         }
         
         activePiece.translate(4, 20);
     }
     
-    bool inBounds(Point p) { // Is the point in the grid?
+    bool inBounds(Point p) {
         if (p.x < 0 || p.y < 0) return false;
         if (p.x >= width || p.y >= height) return false;
         return true;
     }
     
-    bool overlaps(TetrisPiece piece) { // Is the given piece entirely within or above the grid? 
+    bool overlaps(TetrisPiece piece) {
         for (auto i : piece.cells) {
             if (i.x >= 0 && i.x < width && i.y >= height) continue;
             if (!inBounds(i)) return true;
@@ -91,7 +117,7 @@ class TetrisGame {
         return false;
     }
     
-    bool rotatePieceClockwise() { // oh boy here we go (Rotates a piece clockwise and does wall kicks)
+    bool rotatePieceClockwise() { // oh boy here we go
         int startingrotation = activeRotation;
         
         if (activePieceID == 0) {
@@ -122,7 +148,7 @@ class TetrisGame {
         return false;
     }
     
-    bool movePieceDown() { // Moves a piece down and binds it to the grid if necessary. Returns true upon descent and false upon binding.
+    bool movePieceDown() {
         TetrisPiece test = TetrisPiece(activePiece);
         test.translate({0, -1});
         
@@ -130,7 +156,7 @@ class TetrisGame {
         else {
             for (auto i : activePiece.cells) {
                 if (!inBounds({i.x, i.y})) {
-                    endgame = true; // If the game ended we set this to true.
+                    endgame = true;
                     return false;
                 }
                 grid[i.x][i.y] = activePieceID;
@@ -140,7 +166,7 @@ class TetrisGame {
         return true;
     }
     
-    bool movePiece(Point p) { // Move a piece in the vector (p).
+    bool movePiece(Point p) {
         TetrisPiece test = TetrisPiece(activePiece);
         test.translate(p);
         
@@ -148,7 +174,7 @@ class TetrisGame {
         return true;
     }
     
-    int clearLines() { // Clear all clearable lines and apply gravity.
+    int clearLines() {
         int linesCleared = 0;
         for (int y = 0; y < height; y++) {
             int count = 0;
@@ -164,17 +190,19 @@ class TetrisGame {
                 for (int x = 0; x < width; x++) grid[x][height - 1] = -1;
             }
         }
+        clears += linesCleared;
         return linesCleared;
     }
     
-    void disp() { // Simple display of the grid. You can use the backend to make a GUI.
-        for (int y = 19; y >= 0; y--) {
-            for (int x = 0; x < 10; x++) {
+    void disp() {
+        for (int y = height - 1; y >= 0; y--) {
+            for (int x = 0; x < width; x++) {
                 if (!activePiece.contains({x, y})) {
                     if (grid[x][y] >= 0) std::cout << SYMBOLS[grid[x][y]] << " ";
                     else std::cout << ". ";
                 }
-                else std::cout << SYMBOLS[activePieceID] << " ";
+                else if (activePieceID >= 0) std::cout << SYMBOLS[activePieceID] << " ";
+                else std::cout << ". ";
             }
             std::cout << "\n";
         }

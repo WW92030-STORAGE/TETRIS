@@ -1,3 +1,6 @@
+#ifndef WALLKICKS_H
+#define WALLKICKS_H
+
 #include <vector>
 #include <iostream>
 #include "point.h"
@@ -5,7 +8,7 @@
 // I O J L S T Z
 
 // First clockwise then counterclockwise
-// For clockwise, the index is the starting rotation. For counterclockwise, the ending rotation + 4.
+// For clockwise, the index is the starting rotation. For counterclockwise, the ending rotation.
 
 const Point KICKS_NONI[8][5] = {
     {{0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2}},
@@ -30,3 +33,5 @@ const Point KICKS_I[8][5] = {
     {{0, 0}, {-2, 0}, {1, 0}, {-2, -1}, {1, 2}},
     {{0, 0}, {-1, 0}, {2, 0}, {-1, 2}, {2, -1}},
 };
+
+#endif
