@@ -251,11 +251,11 @@ double test(TetrisAI ai, int trials = 16) {
     for (int i = 0; i < trials; i++) {
     
     while (true) {
-        Point fuckyou = ai.fuckaround(game);
+        Point chonk = ai.fuckaround2(game);
         // std::cout << fuckyou.x << " " << fuckyou.y << "\n";
-        for (int i = 0; i < fuckyou.x; i++) game.rotatePieceClockwise();
-        for (int i = 0; i < std::abs(fuckyou.y); i++) {
-            if (fuckyou.y < 0) game.movePiece({-1, 0});
+        for (int i = 0; i < chonk.x; i++) game.rotatePieceClockwise();
+        for (int i = 0; i < std::abs(chonk.y); i++) {
+            if (chonk.y < 0) game.movePiece({-1, 0});
             else game.movePiece({1, 0});
         }
         while (game.movePieceDown());
@@ -288,18 +288,18 @@ double rand01() {
     return (double)(rand()) / (double)(RAND_MAX);
 }
 
-TetrisAI mutate(TetrisAI ai2) {
+TetrisAI mutate(TetrisAI ai2, int radius = 4) {
     TetrisAI ai;
     ai.clear = ai2.clear;
     ai.height = ai2.height;
     ai.hole = ai2.hole;
     ai.blockade = ai2.blockade;
     
-    int x = rand() % 5;
-    if (x == 0) ai.clear += 0.5 - 1 * rand01();
-    if (x == 1) ai.height += 0.5 - 1 * rand01();
-    if (x == 2) ai.hole += 0.5 - 1 * rand01();
-    if (x == 3) ai.blockade += 0.5 - 1 * rand01();
+    int x = rand() % 16;
+    if (x == 0) ai.clear = radius * (0.5 - 1 * rand01());
+    if (x == 1) ai.height = radius * (0.5 - 1 * rand01());
+    if (x == 2) ai.hole = radius * (0.5 - 1 * rand01());
+    if (x == 3) ai.blockade = radius * (0.5 - 1 * rand01());
     return ai;
 }
 
