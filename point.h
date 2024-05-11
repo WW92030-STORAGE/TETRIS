@@ -98,12 +98,12 @@ class TetrisPiece {
         shrinkBoundingBox();
     }
     
-    TetrisPiece(Point a, Point b, Point c, Point d, Point TL, Point BR) {
+    TetrisPiece(Point a, Point b, Point c, Point d, Point TL, Point BR2) {
         cells = {a, b, c, d};
         std::sort(cells.begin(), cells.end());
         
-        bottomleft = {std::min(TL.x, BR.x), std::min(TL.y, BR.y)};
-        topright = {std::max(TL.x, BR.x), std::max(TL.y, BR.y)};
+        bottomleft = {std::min(TL.x, BR2.x), std::min(TL.y, BR2.y)};
+        topright = {std::max(TL.x, BR2.x), std::max(TL.y, BR2.y)};
     }
     
     TetrisPiece(const TetrisPiece& other) {
